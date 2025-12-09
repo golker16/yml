@@ -1,0 +1,51 @@
+name: Build Windows EXE (PyInstaller onedir)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\AppData\Local\pip\Cache
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build (PyInstaller onedir)
+        shell: pwsh
+        run: |
+          # Usa .spec si existe, si no, construye desde app.py
+          if (Test-Path "pyinstaller.spec") {
+            pyinstaller pyinstaller.spec
+          } else {
+            pyinstaller app.py --name midi2yaml_gui --noconsole
+          }
+
+      - name: Upload artifact (dist folder)
+        uses: actions/upload-artifact@v4
+        with:
+          name: midi2yaml_gui-windows
+          path: dist/**
+          if-no-files-found: error
